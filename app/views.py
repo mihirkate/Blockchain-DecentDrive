@@ -39,37 +39,46 @@ def index():
     get_tx_req()
     return render_template("index.html",title="FileStorage",subtitle = "A Decentralized Network for File Storage/Sharing",node_address = ADDR,request_tx = request_tx)
 
-
 @app.route("/submit", methods=["POST"])
-# When new transaction is created it is processed and added to transaction
 def submit():
     start = timer()
     user = request.form["user"]
     up_file = request.files["v_file"]
-    
-    #save the uploaded file in destination
-    up_file.save(os.path.join("app/static/Uploads/",secure_filename(up_file.filename)))
-    #add the file to the list to create a download link
-    files[up_file.filename] = os.path.join(app.root_path, "static" , "Uploads", up_file.filename)
-    #determines the size of the file uploaded in bytes 
-    file_states = os.stat(files[up_file.filename]).st_size 
-    #create a transaction object
-    post_object = {
-        "user": user, #user name
-        "v_file" : up_file.filename, #filename
-        "file_data" : str(up_file.stream.read()), #file data
-        "file_size" : file_states   #file size
-    }
-   
-    # Submit a new transaction
-    address = "{0}/new_transaction".format(ADDR)
-    requests.post(address, json=post_object)
+
+    if up_file:  # Ensure a file was uploaded
+        # Prepare the file path
+        file_path = os.path.join(app.root_path, "static", "Uploads", secure_filename(up_file.filename))
+        print(f"Saving file to: {file_path}")
+
+        # Save the uploaded file
+        up_file.save(file_path)
+        print(f"File saved: {file_path}")
+
+        # Add the file to the list to create a download link
+        files[up_file.filename] = file_path
+
+        # Determine the size of the file uploaded in bytes
+        file_states = os.stat(files[up_file.filename]).st_size
+
+        # Create a transaction object
+        post_object = {
+            "user": user,  # user name
+            "v_file": up_file.filename,  # filename
+            "file_data": str(up_file.stream.read()),  # file data
+            "file_size": file_states  # file size
+        }
+
+        # Submit a new transaction
+        address = f"{ADDR}/new_transaction"
+        requests.post(address, json=post_object)
+    else:
+        print("No file uploaded!")
+
     end = timer()
     print(end - start)
     return redirect("/")
 
-#creates a download link for the file
-@app.route("/submit/<string:variable>",methods = ["GET"])
-def download_file(variable):
-    p = files[variable]
-    return send_file(p,as_attachment=True)
+@app.route('/download/<filename>', methods=['GET'])
+def download_file(filename):
+    # Logic to find the file and send it
+    return send_file(filename, as_attachment=True)
